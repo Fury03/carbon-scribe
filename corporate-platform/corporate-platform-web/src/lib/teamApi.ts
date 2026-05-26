@@ -3,6 +3,7 @@
  * All requests include the JWT from localStorage (key: "access_token").
  */
 
+import { getAccessToken } from '@/lib/auth/token-storage';
 import type {
   TeamMember,
   TeamRole,
@@ -19,7 +20,7 @@ const TEAM_BASE = `${BASE_URL}/api/v1/team`
 
 function getAuthHeaders(): HeadersInit {
   const token =
-    typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    getAccessToken()
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

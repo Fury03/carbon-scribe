@@ -1,3 +1,4 @@
+import { getAccessToken } from '@/lib/auth/token-storage';
 import { ApiResponse, apiClient } from './api-client';
 import type {
   RetireCreditsPayload,
@@ -137,9 +138,7 @@ class RetirementService {
    */
   async exportCsv(): Promise<Blob | null> {
     const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('accessToken')
-        : null;
+      getAccessToken();
     const base =
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
     const res = await fetch(`${base}/retirements/export/csv`, {

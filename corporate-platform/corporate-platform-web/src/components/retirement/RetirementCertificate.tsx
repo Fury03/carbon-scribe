@@ -1,5 +1,6 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth/token-storage';
 import { useEffect, useState } from 'react';
 import {
   FileText,
@@ -54,7 +55,7 @@ export default function RetirementCertificate({
     if (!record) return;
     const url = retirementService.getCertificateDownloadUrl(record.id);
     const token =
-      typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      getAccessToken();
 
     const res = await fetch(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},

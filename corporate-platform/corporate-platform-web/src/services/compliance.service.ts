@@ -1,3 +1,4 @@
+import { getAccessToken } from '@/lib/auth/token-storage';
 import { apiClient, ApiResponse } from './api-client';
 import {
   ComplianceCheckResult,
@@ -54,9 +55,7 @@ class ComplianceService {
   ): Promise<Blob | null> {
     try {
       const token =
-        typeof window !== 'undefined'
-          ? localStorage.getItem('accessToken')
-          : null;
+        getAccessToken();
       const headers: HeadersInit = {
         Authorization: token ? `Bearer ${token}` : '',
       };

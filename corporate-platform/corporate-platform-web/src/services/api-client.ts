@@ -1,3 +1,4 @@
+import { getAccessToken } from '@/lib/auth/token-storage';
 /**
  * Base API Client for handling HTTP requests
  * Handles authentication, error handling, and response formatting
@@ -29,7 +30,7 @@ class ApiClient {
    */
   private getAuthToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('accessToken');
+      return getAccessToken();
     }
     return null;
   }
