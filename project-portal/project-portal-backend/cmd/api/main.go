@@ -23,11 +23,13 @@ import (
 	"carbon-scribe/project-portal/project-portal-backend/internal/integration"
 	integrationstellar "carbon-scribe/project-portal/project-portal-backend/internal/integration/stellar"
 	"carbon-scribe/project-portal/project-portal-backend/internal/notifications"
+	"carbon-scribe/project-portal/project-portal-backend/internal/notifications/channels"
 	"carbon-scribe/project-portal/project-portal-backend/internal/project"
 	"carbon-scribe/project-portal/project-portal-backend/internal/project/inventory"
 	"carbon-scribe/project-portal/project-portal-backend/internal/project/methodology"
 	"carbon-scribe/project-portal/project-portal-backend/internal/project/quality"
 	"carbon-scribe/project-portal/project-portal-backend/internal/reports"
+	"carbon-scribe/project-portal/project-portal-backend/pkg/aws"
 	"carbon-scribe/project-portal/project-portal-backend/internal/search"
 	"carbon-scribe/project-portal/project-portal-backend/internal/seed"
 	"carbon-scribe/project-portal/project-portal-backend/internal/settings"
@@ -198,6 +200,33 @@ func main() {
 	}
 	notificationsRepo := notifications.NewMongoRepository(notificationMongoClient, cfg.Notifications.MongoDatabase)
 	notificationsService := notifications.NewService(notificationsRepo)
+
+	// Set up the SMS sender based on configuration
+	var smsSender channels.SMSSender
+	switch strings.ToLower(cfg.Notifications.SMSProvider) {
+	case "aws_sns":
+		var initErr error
+		smsSender, initErr = channels.NewAWSSNSSender(aws.SNSConfig{
+			Region:          cfg.AWS.Region,
+			AccessKeyID:     cfg.AWS.AccessKeyID,
+			SecretAccessKey: cfg.AWS.SecretAccessKey,
+			Endpoint:        cfg.AWS.Endpoint,
+			SenderID:        cfg.Notifications.AWSSNSSenderID,
+		})
+		if initErr != nil {
+			log.Fatalf("❌ Failed to initialize AWS SNS SMS Sender: %v", initErr)
+		}
+	case "twilio":
+		smsSender = channels.NewTwilioSender(
+			cfg.Notifications.TwilioAccountSID,
+			cfg.Notifications.TwilioAuthToken,
+			cfg.Notifications.TwilioFromNumber,
+		)
+	default:
+		smsSender = &channels.MockSMSSender{}
+	}
+	notificationsService.SetSMSSender(smsSender)
+
 	notificationsHandler := notifications.NewHandler(notificationsService)
 
 	// Initialize inventory service for on-chain credit querying
