@@ -1,3 +1,29 @@
+import { RetirementAggregationService } from './services/retirement-aggregation.service';
+  constructor(
+    ...existing services...,
+    private retirementAggregationService: RetirementAggregationService,
+  ) {}
+  // ========================
+  // Retirement Analytics (Aggregated)
+  // ========================
+
+  @Get('retirements/summary')
+  @HttpCode(HttpStatus.OK)
+  async getRetirementSummary() {
+    return this.retirementAggregationService.getSummary();
+  }
+
+  @Get('retirements/trends')
+  @HttpCode(HttpStatus.OK)
+  async getRetirementTrends() {
+    return this.retirementAggregationService.getTrends();
+  }
+
+  @Get('retirements/breakdown')
+  @HttpCode(HttpStatus.OK)
+  async getRetirementBreakdown() {
+    return this.retirementAggregationService.getBreakdown();
+  }
 import {
   Controller,
   Get,
