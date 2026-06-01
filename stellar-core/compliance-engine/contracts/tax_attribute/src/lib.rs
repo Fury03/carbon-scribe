@@ -120,6 +120,12 @@ impl TaxAttributeContract {
             panic!("Caller is not an authorized issuer");
         }
 
+        // Verify the attribute window is not already expired
+        let current_time = env.ledger().timestamp();
+        if current_time > definition.valid_until {
+            panic!("Cannot attach an expired attribute");
+        }
+
         // Verify tag_id uniqueness
         if env
             .storage()
@@ -137,7 +143,7 @@ impl TaxAttributeContract {
             issuing_authority: issuer,
             valid_from: definition.valid_from,
             valid_until: definition.valid_until,
-            attached_at: env.ledger().timestamp(),
+            attached_at: current_time,
         };
 
         // Store attribute
