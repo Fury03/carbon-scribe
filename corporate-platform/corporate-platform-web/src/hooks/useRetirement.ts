@@ -61,7 +61,7 @@ export function useRetirement(
       if (res.success && res.data) {
         setHistory(res.data);
       } else {
-        setHistoryError(res.error ?? 'Failed to fetch retirement history');
+        setHistoryError(res.parsedError?.message || res.error ?? 'Failed to fetch retirement history');
       }
       setHistoryLoading(false);
     },
@@ -77,7 +77,7 @@ export function useRetirement(
     if (res.success && res.data) {
       setStats(res.data);
     } else {
-      setStatsError(res.error ?? 'Failed to fetch retirement stats');
+      setStatsError(res.parsedError?.message ?? res.error ?? 'Failed to fetch retirement stats');
     }
     setStatsLoading(false);
   }, []);
@@ -92,7 +92,7 @@ export function useRetirement(
         setLastRetirement(res.data);
         return res.data;
       }
-      setRetireError(res.error ?? 'Retirement failed. Please try again.');
+      setRetireError(res.parsedError?.message ?? res.error ?? 'Retirement failed. Please try again.');
       return null;
     },
     [],
