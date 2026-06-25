@@ -8,6 +8,8 @@
  * with server-side token management.
  */
 
+import { reportError } from '@/lib/telemetry/errorReporter';
+
 const ACCESS_TOKEN_KEY = 'cs_access_token';
 const REFRESH_TOKEN_KEY = 'cs_refresh_token';
 const USER_KEY = 'cs_user';
@@ -32,7 +34,7 @@ export function storeTokens(accessToken: string, refreshToken: string, expiresIn
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
     localStorage.setItem(TOKEN_EXPIRY_KEY, expiresAt.toString());
   } catch (error) {
-    console.error('Failed to store tokens:', error);
+    reportError(error, 'token-storage', 'warning', { operation: 'storeTokens' });
   }
 }
 
@@ -61,7 +63,7 @@ export function getAccessToken(): string | null {
     
     return token;
   } catch (error) {
-    console.error('Failed to get access token:', error);
+    reportError(error, 'token-storage', 'warning', { operation: 'getAccessToken' });
     return null;
   }
 }
@@ -75,7 +77,7 @@ export function getRefreshToken(): string | null {
   try {
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   } catch (error) {
-    console.error('Failed to get refresh token:', error);
+    reportError(error, 'token-storage', 'warning', { operation: 'getRefreshToken' });
     return null;
   }
 }
@@ -90,7 +92,7 @@ export function getTokenExpiry(): number | null {
     const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
     return expiry ? parseInt(expiry, 10) : null;
   } catch (error) {
-    console.error('Failed to get token expiry:', error);
+    reportError(error, 'token-storage', 'warning', { operation: 'getTokenExpiry' });
     return null;
   }
 }
@@ -126,7 +128,7 @@ export function clearAuthData(): void {
     localStorage.removeItem(TOKEN_EXPIRY_KEY);
     localStorage.removeItem(USER_KEY);
   } catch (error) {
-    console.error('Failed to clear auth data:', error);
+    reportError(error, 'token-storage', 'warning', { operation: 'clearAuthData' });
   }
 }
 
@@ -139,7 +141,7 @@ export function storeUser(user: any): void {
   try {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   } catch (error) {
-    console.error('Failed to store user:', error);
+    reportError(error, 'token-storage', 'warning', { operation: 'storeUser' });
   }
 }
 
@@ -153,7 +155,7 @@ export function getUser(): any | null {
     const userStr = localStorage.getItem(USER_KEY);
     return userStr ? JSON.parse(userStr) : null;
   } catch (error) {
-    console.error('Failed to get user:', error);
+    reportError(error, 'token-storage', 'warning', { operation: 'getUser' });
     return null;
   }
 }

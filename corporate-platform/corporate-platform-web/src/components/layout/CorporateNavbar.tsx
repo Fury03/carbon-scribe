@@ -5,6 +5,7 @@ import { Search, Bell, Settings, User, ChevronDown, Menu, X, LogOut } from 'luci
 import { useTheme } from '@/hooks/useTheme'
 import { useCorporate } from '@/contexts/CorporateContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { reportError } from '@/lib/telemetry/errorReporter'
 
 export default function CorporateNavbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -17,7 +18,7 @@ export default function CorporateNavbar() {
     try {
       await logout()
     } catch (error) {
-      console.error('Logout failed:', error)
+      reportError(error, 'CorporateNavbar', 'warning', { operation: 'logout' })
     }
   }
 

@@ -2,6 +2,7 @@ import { getAccessToken } from '@/lib/auth/token-storage';
 import { parseApiError, ParsedError, ErrorCode } from '@/lib/utils/errorParser';
 import { withRetry, isRetryableError, RetryOptions, generateIdempotencyKey } from '@/lib/utils/retry';
 import { requestQueue } from '@/lib/utils/requestQueue';
+import { reportError } from '@/lib/telemetry/errorReporter';
 
 /**
  * Base API Client for handling HTTP requests
@@ -173,7 +174,7 @@ class ApiClient {
           };
         }
         
-        console.error(`API Error [${endpoint}]:`, parsedError.message);
+        reportError(error, 'api-client', 'error', { endpoint, message: parsedError.message });
 
         return {
           success: false,
@@ -196,7 +197,7 @@ class ApiClient {
         });
       } catch (error) {
         const parsedError = parseApiError(error);
-        console.error(`API Error [${endpoint}] after retries:`, parsedError.message);
+        reportError(error, 'api-client', 'error', { endpoint, message: parsedError.message, retried: true });
         return {
           success: false,
           error: parsedError.message,

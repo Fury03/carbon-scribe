@@ -1,5 +1,6 @@
 import { parseApiError, ParsedError } from '@/lib/utils/errorParser'
 import { withRetry, isRetryableError, RetryOptions } from '@/lib/utils/retry'
+import { reportError } from '@/lib/telemetry/errorReporter'
 
 export class ApiError extends Error {
   readonly status: number
@@ -70,6 +71,7 @@ export async function apiRequest<T>(
         `Unable to reach the API at ${baseUrl}. Check that the backend is running and CORS allows this origin.`,
         error,
       )
+      reportError(apiError, 'http', 'error', { path, method: init.method ?? 'GET' })
       // Check if this is a retryable network error
       if (isRetryableError(error, 0)) {
         throw error // Let retry logic handle it
@@ -83,7 +85,11 @@ export async function apiRequest<T>(
     if (!response.ok) {
       const parsed = parseApiError(parsedBody, response.status)
       const apiError = new ApiError(response.status, parsed.message, parsedBody)
-      
+      reportError(apiError, 'http', response.status >= 500 ? 'error' : 'warning', {
+        path,
+        method: init.method ?? 'GET',
+        status: response.status,
+      })
       // Check if this is a retryable error (5xx, 408, 429)
       const isRetryable = response.status >= 500 || response.status === 408 || response.status === 429
       if (isRetryable) {

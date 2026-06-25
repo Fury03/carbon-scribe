@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { queryAuditEvents, exportAuditEvents } from '@/lib/api/audit.api';
 import type { AuditEvent, AuditQueryParams, AuditEventType, AuditAction } from '@/types/audit.types';
 import { formatDate, formatEventType, formatAction } from '@/lib/utils/audit-formatters';
+import { reportError } from '@/lib/telemetry/errorReporter';
 
 interface AuditTrailViewerProps {
   entityType?: string;
@@ -55,7 +56,7 @@ export default function AuditTrailViewer({ entityType, entityId, compact }: Audi
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export failed:', err);
+      reportError(err, 'AuditTrailViewer', 'error', { operation: 'export', format });
     }
   };
 

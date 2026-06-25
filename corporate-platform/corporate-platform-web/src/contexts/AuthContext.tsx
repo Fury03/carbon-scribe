@@ -31,6 +31,7 @@ import {
   getUser,
   hasRefreshToken,
 } from '@/lib/auth/token-storage';
+import { reportError } from '@/lib/telemetry/errorReporter';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -75,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(profile)
       return profile
     } catch (error) {
-      console.error('Profile sync failed:', error)
+      reportError(error, 'AuthContext', 'error', { operation: 'syncProfile' })
       return null;
     }
   }, []);
@@ -105,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } catch (error) {
-        console.error('Auth initialization failed:', error);
+        reportError(error, 'AuthContext', 'error', { operation: 'initAuth' });
         clearAuthData();
         setUser(null);
       } finally {
@@ -136,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return true;
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      reportError(error, 'AuthContext', 'warning', { operation: 'refreshToken' });
       return false;
     }
   };
@@ -170,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.push('/')
     } catch (error) {
-      console.error('Login failed:', error)
+      reportError(error, 'AuthContext', 'error', { operation: 'login' })
       throw error
     } finally {
       setIsLoading(false)
@@ -195,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.push('/')
     } catch (error) {
-      console.error('Registration failed:', error)
+      reportError(error, 'AuthContext', 'error', { operation: 'register' })
       throw error
     } finally {
       setIsLoading(false)
@@ -213,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           await logoutApi(refreshToken);
         } catch (error) {
-          console.error('Backend logout failed:', error);
+          reportError(error, 'AuthContext', 'warning', { operation: 'backendLogout' });
           // Continue with client-side logout even if backend fails
         }
       }

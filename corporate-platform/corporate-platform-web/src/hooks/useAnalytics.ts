@@ -19,6 +19,7 @@ import type {
   PerformanceTimeSeries,
   PerformanceRanking,
 } from '@/types/analytics.types';
+import { reportError } from '@/lib/telemetry/errorReporter';
 
 interface UseAnalyticsState<T> {
   data: T | null;
@@ -43,7 +44,7 @@ function useAnalytics<T>(
       setData(result);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch analytics data');
-      console.error('Analytics fetch error:', err);
+      reportError(err, 'useAnalytics', 'error');
     } finally {
       setLoading(false);
     }
