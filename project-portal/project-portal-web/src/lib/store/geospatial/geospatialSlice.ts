@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import type { GeospatialSlice, ProjectGeometry, Geofence, MapTile, Geometry } from './geospatial.types';
+import type { GeospatialSlice, ProjectGeometry, Geofence, MapTile, Geometry, SatelliteImage, NDVIDataPoint } from './geospatial.types';
 import {
   fetchProjectGeometryApi,
   fetchAllProjectGeometriesApi,
@@ -10,12 +10,38 @@ import {
   deleteGeofenceApi,
   fetchMapTilesApi,
 } from './geospatial.api';
+import { geospatialApi } from '@/lib/geospatial/satellite';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 
+// Initial state for time-lapse feature
+const initialTimeLapseState = {
+  projectId: null,
+  images: [],
+  currentFrameIndex: 0,
+  isPlaying: false,
+  speed: 2, // Default: 2 frames per second
+  showNDVI: false,
+  startDate: null,
+  endDate: null,
+  isLoading: false,
+  error: null,
+  exportInProgress: false,
+};
+
 const initialState: Pick<
   GeospatialSlice,
-  'projectGeometries' | 'geofences' | 'mapTiles' | 'selectedGeometry' | 'selectedGeofence' | 'geospatialLoading' | 'geospatialErrors'
+  | 'projectGeometries'
+  | 'geofences'
+  | 'mapTiles'
+  | 'selectedGeometry'
+  | 'selectedGeofence'
+  | 'geospatialLoading'
+  | 'geospatialErrors'
+  | 'timeLapse'
+  | 'satelliteImages'
+  | 'ndviData'
+  | 'selectedSatelliteImage'
 > = {
   projectGeometries: [],
   geofences: [],
@@ -34,6 +60,11 @@ const initialState: Pick<
     fetchTiles: null,
     update: null,
   },
+  // Satellite state
+  timeLapse: initialTimeLapseState,
+  satelliteImages: [],
+  ndviData: [],
+  selectedSatelliteImage: null,
 };
 
 export const createGeospatialSlice: StateCreator<GeospatialSlice> = (set, get) => ({
@@ -239,4 +270,245 @@ export const createGeospatialSlice: StateCreator<GeospatialSlice> = (set, get) =
     }),
 
   resetGeospatialState: () => set({ ...initialState }),
+
+  // ===================== SATELLITE TIME-LAPSE METHODS =====================
+
+  /**
+   * Fetch historical satellite imagery for a project within a date range
+   */
+  fetchSatelliteTimeSeries: async (
+    projectId: string,
+    startDate: string,
+    endDate: string
+  ) => {
+    set((state) => ({
+      timeLapse: {
+        ...state.timeLapse,
+        isLoading: true,
+        error: null,
+        projectId,
+        startDate,
+        endDate,
+      },
+    }));
+
+    try {
+      const timeSeries = await geospatialApi.fetchHistoricalImagery(
+        projectId,
+        startDate,
+        endDate
+      );
+
+      set((state) => ({
+        timeLapse: {
+          ...state.timeLapse,
+          images: timeSeries.images,
+          currentFrameIndex: 0,
+          isLoading: false,
+        },
+        satelliteImages: timeSeries.images,
+      }));
+
+      // Also fetch NDVI data if available
+      try {
+        const ndviData = await geospatialApi.fetchNDVIData(
+          projectId,
+          startDate,
+          endDate
+        );
+        set({ ndviData });
+      } catch (ndviError) {
+        // NDVI fetch failure is non-critical - log but don't fail the main operation
+        console.warn('Failed to fetch NDVI data:', ndviError);
+      }
+    } catch (error: unknown) {
+      set((state) => ({
+        timeLapse: {
+          ...state.timeLapse,
+          isLoading: false,
+          error: getErrorMessage(error),
+        },
+      }));
+      showErrorToast('Failed to load satellite imagery');
+    }
+  },
+
+  /**
+   * Set the current frame index for the time-lapse
+   */
+  setTimeLapseFrame: (index: number) => {
+    set((state) => ({
+      timeLapse: {
+        ...state.timeLapse,
+        currentFrameIndex: Math.max(
+          0,
+          Math.min(index, state.timeLapse.images.length - 1)
+        ),
+      },
+    }));
+  },
+
+  /**
+   * Start playing the time-lapse
+   */
+  playTimeLapse: () => {
+    set((state) => ({
+      timeLapse: {
+        ...state.timeLapse,
+        isPlaying: true,
+      },
+    }));
+  },
+
+  /**
+   * Pause the time-lapse playback
+   */
+  pauseTimeLapse: () => {
+    set((state) => ({
+      timeLapse: {
+        ...state.timeLapse,
+        isPlaying: false,
+      },
+    }));
+  },
+
+  /**
+   * Set the playback speed (frames per second)
+   */
+  setTimeLapseSpeed: (speed: number) => {
+    set((state) => ({
+      timeLapse: {
+        ...state.timeLapse,
+        speed: Math.max(0.5, Math.min(10, speed)), // Clamp between 0.5 and 10
+      },
+    }));
+  },
+
+  /**
+   * Toggle NDVI overlay visibility
+   */
+  toggleNDVI: () => {
+    set((state) => ({
+      timeLapse: {
+        ...state.timeLapse,
+        showNDVI: !state.timeLapse.showNDVI,
+      },
+    }));
+  },
+
+  /**
+   * Set the date range for the time-lapse
+   */
+  setDateRange: (startDate: string, endDate: string) => {
+    set((state) => ({
+      timeLapse: {
+        ...state.timeLapse,
+        startDate,
+        endDate,
+        currentFrameIndex: 0,
+      },
+    }));
+  },
+
+  /**
+   * Export the time-lapse as video or GIF
+   */
+  exportTimeLapse: async (
+    projectId: string,
+    startDate: string,
+    endDate: string,
+    format: 'video' | 'gif'
+  ) => {
+    set((state) => ({
+      timeLapse: {
+        ...state.timeLapse,
+        exportInProgress: true,
+      },
+    }));
+
+    try {
+      const blob = await geospatialApi.exportTimeLapse(
+        projectId,
+        startDate,
+        endDate,
+        {
+          format,
+          fps: get().timeLapse.speed,
+          includeNDVI: get().timeLapse.showNDVI,
+        }
+      );
+
+      showSuccessToast(`Time-lapse ${format} exported successfully`);
+      return blob;
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      showErrorToast(`Failed to export time-lapse: ${errorMessage}`);
+      return null;
+    } finally {
+      set((state) => ({
+        timeLapse: {
+          ...state.timeLapse,
+          exportInProgress: false,
+        },
+      }));
+    }
+  },
+
+  /**
+   * Clear all time-lapse data from state
+   */
+  clearTimeLapse: () => {
+    set((state) => ({
+      timeLapse: initialTimeLapseState,
+      satelliteImages: [],
+      ndviData: [],
+      selectedSatelliteImage: null,
+    }));
+  },
+
+  /**
+   * Fetch NDVI data for a project within a date range
+   */
+  fetchNDVIData: async (projectId: string, startDate: string, endDate: string) => {
+    try {
+      const ndviData = await geospatialApi.fetchNDVIData(
+        projectId,
+        startDate,
+        endDate
+      );
+      set({ ndviData });
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      showErrorToast(`Failed to fetch NDVI data: ${errorMessage}`);
+    }
+  },
+
+  /**
+   * Fetch a single satellite image by ID
+   */
+  fetchSatelliteImage: async (imageId: string) => {
+    try {
+      const image = await geospatialApi.fetchSatelliteImage(imageId);
+      set({ selectedSatelliteImage: image });
+      return image;
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      showErrorToast(`Failed to fetch satellite image: ${errorMessage}`);
+      return null;
+    }
+  },
+
+  /**
+   * Check if satellite data is available for a project
+   */
+  checkDataAvailability: async (projectId: string) => {
+    try {
+      const availability = await geospatialApi.checkDataAvailability(projectId);
+      return availability;
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      console.warn('Failed to check data availability:', errorMessage);
+      return null;
+    }
+  },
 });

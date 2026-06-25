@@ -32,6 +32,10 @@ import UptimeChart from '@/components/monitoring/reports/UptimeChart';
 import SLATracker from '@/components/monitoring/reports/SLATracker';
 import MaintenanceCalendar from '@/components/monitoring/reports/MaintenanceCalendar';
 
+// Satellite Monitoring Components
+import TimeLapseViewer from '@/components/maps/TimeLapseViewer';
+import NDVITimeline from '@/components/monitoring/NDVITimeline';
+
 /** Reusable skeleton block */
 function Skeleton({ className }: { className?: string }) {
   return (
@@ -87,6 +91,19 @@ function ChartSkeleton() {
   );
 }
 
+/** Skeleton for satellite time-lapse viewer */
+function TimeLapseSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <Skeleton className="w-12 h-12 rounded-full" />
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+    </div>
+  );
+}
+
 export default function SystemHealthDashboard() {
   const fetchDetailedStatus = useStore(state => state.fetchDetailedStatus);
   const fetchServices = useStore(state => state.fetchServices);
@@ -131,6 +148,14 @@ export default function SystemHealthDashboard() {
     );
   }
 
+  // Get project ID from URL params or context - using a placeholder for now
+  // In a real implementation, this would come from the project context or URL
+  const projectId = "demo-project-123"; // TODO: Get from project context
+
+  // Calculate date range for NDVI (last 365 days)
+  const endDate = new Date().toISOString().split('T')[0];
+  const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto p-4 md:p-6 pb-20 bg-gray-50/50 min-h-screen">
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
@@ -153,6 +178,35 @@ export default function SystemHealthDashboard() {
 
       {/* Uptime Stats */}
       {statusLoading ? <StatsCardsSkeleton /> : <UptimeStatsCards />}
+
+      {/* ===== SATELLITE MONITORING SECTION ===== */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
+          {/* Time-Lapse Viewer Section */}
+          <section className="mb-6" aria-label="Satellite Time-Lapse">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold text-gray-800">Satellite Time-Lapse</h2>
+              <span className="text-sm text-gray-500">Project Monitoring</span>
+            </div>
+            <TimeLapseViewer 
+              projectId={projectId}
+              className="w-full"
+            />
+          </section>
+        </div>
+
+        <div className="xl:col-span-1">
+          {/* NDVI Timeline Section */}
+          <section className="mb-6" aria-label="NDVI Timeline">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">NDVI Timeline</h2>
+            <NDVITimeline
+              projectId={projectId}
+              startDate={startDate}
+              endDate={endDate}
+            />
+          </section>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-6">
